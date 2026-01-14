@@ -1,0 +1,32 @@
+{
+  "name": "miami-crime-tracker",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Real-time Miami crime and incident monitoring dashboard",
+  "workspaces": [
+    "apps/frontend",
+    "apps/backend"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=apps/backend & npm run dev --workspace=apps/frontend",
+    "dev:frontend": "npm run dev --workspace=apps/frontend",
+    "dev:backend": "npm run dev --workspace=apps/backend",
+    "build": "npm run build --workspace=apps/backend && npm run build --workspace=apps/frontend",
+    "start": "npm run start --workspace=apps/backend",
+    "lint": "npm run lint --workspaces",
+    "clean": "rm -rf node_modules apps/*/node_modules apps/*/.next apps/*/dist"
+  },
+  "keywords": [
+    "miami",
+    "crime",
+    "monitoring",
+    "dashboard",
+    "real-time"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  }
+}

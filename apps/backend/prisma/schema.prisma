@@ -1,0 +1,177 @@
+// This is your Prisma schema file
+// Learn more: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Represents a crime or incident in Miami
+model Incident {
+  id              String   @id @default(cuid())
+  /// External ID from source system
+  externalId      String?  @unique
+
+  /// Type of incident: "crime", "accident", "fire", "emergency"
+  type            String
+  /// More specific category: "robbery", "assault", "traffic", etc.
+  category        String
+  /// Severity level: "low", "medium", "high", "critical"
+  severity        String
+  /// Current status: "active", "resolved", "monitoring"
+  status          String   @default("active")
+
+  /// Brief title of the incident
+  title           String
+  /// Detailed description
+  description     String?  @db.Text
+  /// Location name (e.g., "Downtown Miami")
+  location        String
+  /// Geographic coordinates
+  latitude        Float
+  longitude       Float
+  /// Street address if available
+  address         String?
+
+  /// When the incident was originally reported
+  reportedAt      DateTime
+  /// When the incident was resolved (if applicable)
+  resolvedAt      DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  /// Data source reference
+  sourceId        String
+  source          Source   @relation(fields: [sourceId], references: [id])
+
+  /// Additional flexible metadata in JSON format
+  metadata        Json?
+  /// Searchable tags (e.g., ["gunfire", "officer-involved"])
+  tags            String[]
+
+  @@index([reportedAt])
+  @@index([severity])
+  @@index([type])
+  @@index([status])
+  @@index([latitude, longitude])
+  @@map("incidents")
+}
+
+/// Represents a Miami-Dade transit vehicle (bus, rail, etc.)
+model TransitVehicle {
+  id              String   @id @default(cuid())
+  /// Unique vehicle identifier from transit system
+  vehicleId       String   @unique
+  /// Route ID (e.g., "95" for bus route 95)
+  routeId         String
+  /// Human-readable route name
+  routeName       String
+  /// Type: "bus", "metrorail", "metromover"
+  vehicleType     String
+
+  /// Current geographic coordinates
+  latitude        Float
+  longitude       Float
+  /// Direction in degrees (0-359)
+  heading         Int?
+  /// Current speed in mph
+  speed           Float?
+
+  /// Vehicle status: "active", "delayed", "offline"
+  status          String   @default("active")
+  /// Occupancy level: "empty", "low", "medium", "high", "full"
+  occupancy       String?
+
+  /// Last update timestamp from transit API
+  lastUpdate      DateTime
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([vehicleId])
+  @@index([routeId])
+  @@index([lastUpdate])
+  @@map("transit_vehicles")
+}
+
+/// Data sources for incidents (police, news, emergency feeds, etc.)
+model Source {
+  id              String     @id @default(cuid())
+  /// Source name (e.g., "Miami PD", "Emergency Services")
+  name            String     @unique
+  /// Type: "official", "news", "social", "emergency"
+  type            String
+  /// Source website URL
+  url             String?
+  /// API endpoint for fetching data
+  apiEndpoint     String?
+  /// Whether this source is currently active
+  isActive        Boolean    @default(true)
+  /// Last successful fetch timestamp
+  lastFetchAt     DateTime?
+  /// How often to fetch in seconds (default 30s)
+  fetchInterval   Int        @default(30)
+
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  incidents       Incident[]
+
+  @@index([isActive])
+  @@map("sources")
+}
+
+/// Cached dashboard statistics for quick loading
+model DashboardStats {
+  id                    String   @id @default(cuid())
+  /// Time period: "24h", "7d", "30d"
+  period                String   @unique
+
+  /// Summary counts
+  totalIncidents        Int
+  criticalIncidents     Int
+  activeIncidents       Int
+  resolvedIncidents     Int
+
+  /// Breakdown by type (JSON object)
+  incidentsByType       Json
+  /// Breakdown by severity (JSON object)
+  incidentsBySeverity   Json
+  /// Hourly/daily trend data (JSON array)
+  incidentsTrend        Json
+
+  /// Top locations with most incidents
+  topLocations          Json
+  /// Detected anomalies/spikes
+  recentSpikes          Json
+
+  /// When these stats were calculated
+  calculatedAt          DateTime @default(now())
+
+  @@index([period])
+  @@map("dashboard_stats")
+}
+
+/// Alert rules for automated notifications (future enhancement)
+model AlertRule {
+  id              String   @id @default(cuid())
+  /// Rule name
+  name            String
+  /// Whether this rule is active
+  isActive        Boolean  @default(true)
+
+  /// Filter conditions in JSON format
+  conditions      Json
+  /// Severity to assign when triggered
+  severity        String
+  /// Notification channels: ["email", "sms", "webhook"]
+  notifyChannels  String[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("alert_rules")
+}
