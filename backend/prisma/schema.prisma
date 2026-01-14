@@ -1,0 +1,149 @@
+// Prisma Schema for Miami Crime Tracker
+// Database: PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Crime and incident records
+model Incident {
+  id              String   @id @default(cuid())
+  externalId      String?  @unique // ID from external source
+
+  // Classification
+  type            String   // "crime", "accident", "fire", "emergency"
+  category        String   // "robbery", "assault", "traffic", etc.
+  severity        String   // "low", "medium", "high", "critical"
+  status          String   @default("active") // "active", "resolved", "monitoring"
+
+  // Details
+  title           String
+  description     String?  @db.Text
+
+  // Location
+  location        String   // Area name
+  latitude        Float
+  longitude       Float
+  address         String?
+
+  // Timestamps
+  reportedAt      DateTime
+  resolvedAt      DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  sourceId        String
+  source          Source   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  // Additional data
+  tags            String[] // Searchable tags
+  metadata        Json?    // Flexible metadata
+
+  @@index([reportedAt])
+  @@index([severity])
+  @@index([type])
+  @@index([status])
+  @@index([latitude, longitude])
+  @@index([sourceId])
+  @@map("incidents")
+}
+
+/// Miami-Dade transit vehicles (buses, metro)
+model TransitVehicle {
+  id              String   @id @default(cuid())
+  vehicleId       String   @unique
+
+  // Route info
+  routeId         String
+  routeName       String
+  vehicleType     String   // "bus", "metrorail", "metromover"
+
+  // Location
+  latitude        Float
+  longitude       Float
+  heading         Int?     // Direction in degrees (0-359)
+  speed           Float?   // mph
+
+  // Status
+  status          String   @default("active") // "active", "delayed", "offline"
+  occupancy       String?  // "empty", "low", "medium", "high", "full"
+
+  // Timestamps
+  lastUpdate      DateTime
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([vehicleId])
+  @@index([routeId])
+  @@index([lastUpdate])
+  @@index([vehicleType])
+  @@map("transit_vehicles")
+}
+
+/// Data sources (police feeds, emergency services, etc.)
+model Source {
+  id              String     @id @default(cuid())
+  name            String     @unique
+  type            String     // "official", "news", "social", "emergency"
+  url             String?
+  apiEndpoint     String?
+  isActive        Boolean    @default(true)
+  lastFetchAt     DateTime?
+  fetchInterval   Int        @default(30) // seconds
+
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  incidents       Incident[]
+
+  @@index([isActive])
+  @@map("sources")
+}
+
+/// Cached dashboard statistics
+model DashboardStats {
+  id                    String   @id @default(cuid())
+  period                String   @unique // "24h", "7d", "30d"
+
+  // Counts
+  totalIncidents        Int
+  criticalIncidents     Int
+  activeIncidents       Int
+  resolvedIncidents     Int
+
+  // Breakdowns (JSON objects)
+  incidentsByType       Json     // {"crime": 45, "accident": 23}
+  incidentsBySeverity   Json     // {"low": 12, "medium": 34}
+  incidentsTrend        Json     // [{time, count}]
+
+  // Analysis
+  topLocations          Json     // [{location, count}]
+  recentSpikes          Json     // [{time, count, deviation}]
+
+  calculatedAt          DateTime @default(now())
+
+  @@index([period])
+  @@map("dashboard_stats")
+}
+
+/// Alert rules for notifications (future feature)
+model AlertRule {
+  id              String   @id @default(cuid())
+  name            String
+  isActive        Boolean  @default(true)
+
+  conditions      Json     // Filter criteria
+  severity        String   // Severity threshold
+  notifyChannels  String[] // ["email", "sms", "webhook"]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("alert_rules")
+}

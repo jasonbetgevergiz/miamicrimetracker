@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: miami-crime-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: miami_crime_tracker
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache & Queue
+  redis:
+    image: redis:7-alpine
+    container_name: miami-crime-redis
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API (optional - for full stack local dev)
+  # api:
+  #   build: .
+  #   container_name: miami-crime-api
+  #   restart: unless-stopped
+  #   ports:
+  #     - '3000:3000'
+  #   environment:
+  #     DATABASE_URL: postgresql://postgres:postgres@postgres:5432/miami_crime_tracker?schema=public
+  #     REDIS_URL: redis://redis:6379
+  #     NODE_ENV: development
+  #     PORT: 3000
+  #     CORS_ORIGIN: http://localhost:3001
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #   volumes:
+  #     - .:/app
+  #     - /app/node_modules
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
